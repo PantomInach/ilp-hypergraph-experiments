@@ -1,12 +1,11 @@
-from enum import Enum
-from typing import Final, FrozenSet, Iterable
+from typing import Final, FrozenSet, Iterable, Self
+
+from settings import train_types, max_train_len_global
 
 # Describes a trains possible arrangements at a station
 # Contains (train_type, train_orientation, train_position)
 type TrainArrangment = tuple[int, bool, int]
 
-train_types: Final[int] = 2
-max_train_len_global: Final[int] = 3
 train_arrangements: FrozenSet[TrainArrangment] = frozenset(
     (
         (t, o, p)
@@ -15,14 +14,6 @@ train_arrangements: FrozenSet[TrainArrangment] = frozenset(
         for p in range(max_train_len_global)
     )
 )
-
-
-class ConnectionType(Enum):
-    ThroughTurn = 1
-    DeadEndTurn = 2
-    TurnaroundTrip = 3
-    DeadheadTrip = 4
-
 
 class TrainStation(object):
     def __init__(
@@ -45,6 +36,32 @@ class TrainStation(object):
         elif disallow_arrangements:
             self.allowed_arrangements -= set(disallow_arrangements)
 
+    def discard_arrangements_by(self, types: Iterable[int] | None = None, orientations: Iterable[bool] | None = None, positions: Iterable[int] | None = None) -> Self:
+        """
+        Filters allowed arrangements by the given arguments and returns the trainstation.
+        """
+        if types:
+            self.allowed_arrangements = set(arrangement for arrangement in self.allowed_arrangements if not arrangement[0] in types)
+        if orientations:
+            self.allowed_arrangements = set(arrangement for arrangement in self.allowed_arrangements if not arrangement[1] in orientations)
+        if types:
+            self.allowed_arrangements = set(arrangement for arrangement in self.allowed_arrangements if not arrangement[2] in positions)
+        return self
+
+    def get_connections(self):
+        # TODO: how to model turns and trips between stations
+        pass
+
+class Connection(object):
+    """
+    Describes a connection between two stations outside of a timetable trip.
+    """
+    def __init__(self, origin: TrainStation, destination: TrainStation, weight: int, arrangement_origin: TrainArrangment, arrangement_destination):
+        self.origin: TrainStation = origin
+        self.destination: TrainStation = destination
+        self.weight: int = weight
+        self.arrangement_origin: TrainArrangment = arrangement_origin
+        self.arrangement_destination: TrainArrangment = arrangement_destination
 
 class TimeTableTrip(object):
     """
@@ -66,3 +83,6 @@ class TimeTableTrip(object):
                 )
             )
         return self._allowed_in_and_out_arrangements
+
+    def get_all_connections(self, weight: int) -> list[Connection,...]:
+        return list(Connection(self.origin, self.destination, weight, arrangement, arrangement) for arrangement in self.get_allowed_in_and_out_arrangements())
