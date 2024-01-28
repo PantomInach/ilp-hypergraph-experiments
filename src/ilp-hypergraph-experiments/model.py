@@ -32,6 +32,14 @@ timetable_trips: tuple[TimeTableTrip] = tuple([
 
 # Distance between stations as adjecency list.
 # Pairs of TrainStation not in list are unreachable from each other.
+#   |  A  B  C  D  E From
+# --+---------------
+# A |  N 10 20 25  N
+# B |  N  N 10 15 30
+# C | 25  N  N  5 10
+# D | 20 30  N  N  5
+# E | 10 15  N  N  N
+# To
 distance: dict[TrainStation, dict[TrainStation, int | None]] = {
         get_station("A"): {get_station("A"): None, get_station("B"): 10, get_station("C"): 20, get_station("D"): 25, get_station("E"): None},
         get_station("B"): {get_station("A"): None, get_station("B"): None, get_station("C"): 10, get_station("D"): 15, get_station("E"): 30},
@@ -40,6 +48,7 @@ distance: dict[TrainStation, dict[TrainStation, int | None]] = {
         get_station("E"): {get_station("A"): 10, get_station("B"): 15, get_station("C"): None, get_station("D"): None, get_station("E"): None},
 }
 
+# Functions for easier working with the distances.
 def get_distance(stationA: TrainStation, stationB: TrainStation) -> int | None:
     adj: dict[TrainStation, int] = distance.get(stationA)
     if adj:
@@ -58,7 +67,34 @@ for trip in timetable_trips:
     dist = get_distance_trip(trip)
     if dist:
         connections.update(trip.get_all_connections(dist))
-# Add all other connections between
+
+# Add all other connections between stations themself.
+# Station A allow almost everything.
+connections.update(get_station("A").get_connections(get_station("A"), weight=0)) # Station A direct turn
+connections.update(get_station("A").get_connections_turnaround(get_station("A"), weight=1, preserve_position=False)) # Station A turnaround turn with coupling
+connections.update(get_station("A").get_connections_deadhead_trip(get_station("A"), weight=10)) # Station A deadhead trips turn
+# Allow split up at Station B
+connections.update(get_station("B").get_connections(get_station("B"), weight=0, preserve_position=False))
+# Allow split up at station C
+connections.update(get_station("C").get_connections(get_station("C"), weight=0, preserve_position=False))
+# Staion D only direct through turns.
+connections.update(get_station("D").get_connections(get_station("D"), weight=0))
+# Staion E only direct through turns.
+connections.update(get_station("E").get_connections(get_station("E"), weight=0))
+connections.update(get_station("E").get_connections_turnaround(get_station("E"), weight=0))
+
+# The connections between all other staions are modelled by deadhead trips with extra distance 10, if the stations are connected.
+for origin in stations:
+    for dest in stations:
+        if origin == dest:
+            continue
+        dist = get_distance(origin, dest)
+        if dist is None:
+            continue
+        connections.update(origin.get_connections_deadhead_trip(dest, weight=dist + 10))
+
+# Filter duplicated connections
+
 
 if __name__ == "__main__":
     # Test if the given model is configured right.

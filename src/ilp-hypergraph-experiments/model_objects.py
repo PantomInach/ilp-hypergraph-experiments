@@ -51,6 +51,8 @@ class TrainStation(object):
     def get_connections(self, destination: "TrainStation", weight:int, preserve_position: bool = True) -> list["Connection"]:
         """
         Returns all direct turns between the stations as connections.
+
+        -@ preserve_position: Disallows coupling or uncoupling in most cases.
         """
         if preserve_position:
             possible_direct = self.allowed_arrangements.intersection(destination.allowed_arrangements)
@@ -66,6 +68,8 @@ class TrainStation(object):
     def get_connections_turnaround(self, destination: "TrainStation", weight: int, preserve_position: bool = True) -> list["Connection"]:
         """
         Returns all turnaround turns between the stations as connections.
+
+        -@ preserve_position: Disallows coupling or uncoupling in most cases.
         """
         return list(
             Connection(self, destination, weight, arr_origin, arr_dest)
@@ -82,7 +86,7 @@ class TrainStation(object):
 
         This function calculates the same as get_connections_turnaround, but is kept for real world modelling analogies.
         """
-        self.get_connections_turnaround(destination, weight, preserve_position=False)
+        return self.get_connections_turnaround(destination, weight, preserve_position=False)
 
 class Connection(object):
     """
