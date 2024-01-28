@@ -1,3 +1,6 @@
+# Gurobi licens file
+gurobi.lic
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -127,6 +130,8 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+venv-pc/
+venv-laptop/
 
 # Spyder project settings
 .spyderproject
