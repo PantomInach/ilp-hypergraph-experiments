@@ -93,9 +93,6 @@ for origin in stations:
             continue
         connections.update(origin.get_connections_deadhead_trip(dest, weight=dist + 10))
 
-# Filter duplicated connections
-
-
 if __name__ == "__main__":
     # Test if the given model is configured right.
     # Test if all TrainStation have different names
@@ -117,4 +114,3 @@ if __name__ == "__main__":
         if not trip_serviced:
             raise RuntimeError(f"The timetable trip from '{stationA.name}' to '{stationB.name}' can't be serviced since they are not connection or no suitable train can be run between them two.")
     print("Configuration looks fine.")
-    pass
