@@ -48,9 +48,41 @@ class TrainStation(object):
             self.allowed_arrangements = set(arrangement for arrangement in self.allowed_arrangements if not arrangement[2] in positions)
         return self
 
-    def get_connections(self):
-        # TODO: how to model turns and trips between stations
-        pass
+    def get_connections(self, destination: "TrainStation", weight:int, preserve_position: bool = True) -> list["Connection"]:
+        """
+        Returns all direct turns between the stations as connections.
+        """
+        if preserve_position:
+            possible_direct = self.allowed_arrangements.intersection(destination.allowed_arrangements)
+            return list(Connection(self, destination, weight, arrangement, arrangement) for arrangement in possible_direct)
+        else:
+            return list(
+                Connection(self, destination, weight, arr_origin, arr_dest)
+                for arr_origin in self.allowed_arrangements
+                for arr_dest in destination.allowed_arrangements
+                if arr_origin[0] == arr_dest[0] and arr_origin[1] == arr_dest[1]
+            )
+
+    def get_connections_turnaround(self, destination: "TrainStation", weight: int, preserve_position: bool = True) -> list["Connection"]:
+        """
+        Returns all turnaround turns between the stations as connections.
+        """
+        return list(
+            Connection(self, destination, weight, arr_origin, arr_dest)
+            for arr_origin in self.allowed_arrangements
+            for arr_dest in destination.allowed_arrangements
+            if arr_origin[0] == arr_dest[0] and arr_origin[1] != arr_dest[1] and (arr_origin[2] == arr_dest[2] or not preserve_position)
+        )
+
+    def get_connections_deadhead_trip(self, destination: "TrainStation", weight: int) -> list["Connection"]:
+        """
+        Returns all trips between the stations as connections.
+        This maps all arranements to all arrangements if the type of the trains is preserved.
+        Here deadhead and normal trips are differentiated, but can be described by the weight of the connection.
+
+        This function calculates the same as get_connections_turnaround, but is kept for real world modelling analogies.
+        """
+        self.get_connections_turnaround(destination, weight, preserve_position=False)
 
 class Connection(object):
     """
@@ -73,16 +105,5 @@ class TimeTableTrip(object):
         self.origin: TrainStation = stationA
         self.destination: TrainStation = stationB
 
-        self._allowed_in_and_out_arrangements: None | set[TrainArrangment] = None
-
-    def get_allowed_in_and_out_arrangements(self) -> set[TrainArrangment]:
-        if not self._allowed_in_and_out_arrangements:
-            self._allowed_in_and_out_arrangements = (
-                self.origin.allowed_arrangements.intersection(
-                    self.destination.allowed_arrangements
-                )
-            )
-        return self._allowed_in_and_out_arrangements
-
     def get_all_connections(self, weight: int) -> list[Connection,...]:
-        return list(Connection(self.origin, self.destination, weight, arrangement, arrangement) for arrangement in self.get_allowed_in_and_out_arrangements())
+        return self.origin.get_connections(self.destination, weight)
