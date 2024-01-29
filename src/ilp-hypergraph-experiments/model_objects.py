@@ -15,6 +15,7 @@ train_arrangements: FrozenSet[TrainArrangment] = frozenset(
     )
 )
 
+
 class TrainStation(object):
     def __init__(
         self,
@@ -36,27 +37,51 @@ class TrainStation(object):
         elif disallow_arrangements:
             self.allowed_arrangements -= set(disallow_arrangements)
 
-    def discard_arrangements_by(self, types: Iterable[int] | None = None, orientations: Iterable[bool] | None = None, positions: Iterable[int] | None = None) -> Self:
+    def discard_arrangements_by(
+        self,
+        types: Iterable[int] | None = None,
+        orientations: Iterable[bool] | None = None,
+        positions: Iterable[int] | None = None,
+    ) -> Self:
         """
         Filters allowed arrangements by the given arguments and returns the trainstation.
         """
         if types:
-            self.allowed_arrangements = set(arrangement for arrangement in self.allowed_arrangements if not arrangement[0] in types)
+            self.allowed_arrangements = set(
+                arrangement
+                for arrangement in self.allowed_arrangements
+                if not arrangement[0] in types
+            )
         if orientations:
-            self.allowed_arrangements = set(arrangement for arrangement in self.allowed_arrangements if not arrangement[1] in orientations)
+            self.allowed_arrangements = set(
+                arrangement
+                for arrangement in self.allowed_arrangements
+                if not arrangement[1] in orientations
+            )
         if types:
-            self.allowed_arrangements = set(arrangement for arrangement in self.allowed_arrangements if not arrangement[2] in positions)
+            self.allowed_arrangements = set(
+                arrangement
+                for arrangement in self.allowed_arrangements
+                if not arrangement[2] in positions
+            )
         return self
 
-    def get_connections(self, destination: "TrainStation", weight:int, preserve_position: bool = True) -> list["Connection"]:
+    def get_connections(
+        self, destination: "TrainStation", weight: int, preserve_position: bool = True
+    ) -> list["Connection"]:
         """
         Returns all direct turns between the stations as connections.
 
         -@ preserve_position: Disallows coupling or uncoupling in most cases.
         """
         if preserve_position:
-            possible_direct = self.allowed_arrangements.intersection(destination.allowed_arrangements)
-            return list(Connection(self, destination, weight, arrangement, arrangement) for arrangement in possible_direct)
+            possible_direct = self.allowed_arrangements.intersection(
+                destination.allowed_arrangements
+            )
+            return list(
+                Connection(self, destination, weight, arrangement, arrangement)
+                for arrangement in possible_direct
+            )
         else:
             return list(
                 Connection(self, destination, weight, arr_origin, arr_dest)
@@ -65,7 +90,9 @@ class TrainStation(object):
                 if arr_origin[0] == arr_dest[0] and arr_origin[1] == arr_dest[1]
             )
 
-    def get_connections_turnaround(self, destination: "TrainStation", weight: int, preserve_position: bool = True) -> list["Connection"]:
+    def get_connections_turnaround(
+        self, destination: "TrainStation", weight: int, preserve_position: bool = True
+    ) -> list["Connection"]:
         """
         Returns all turnaround turns between the stations as connections.
 
@@ -75,10 +102,14 @@ class TrainStation(object):
             Connection(self, destination, weight, arr_origin, arr_dest)
             for arr_origin in self.allowed_arrangements
             for arr_dest in destination.allowed_arrangements
-            if arr_origin[0] == arr_dest[0] and arr_origin[1] != arr_dest[1] and (arr_origin[2] == arr_dest[2] or not preserve_position)
+            if arr_origin[0] == arr_dest[0]
+            and arr_origin[1] != arr_dest[1]
+            and (arr_origin[2] == arr_dest[2] or not preserve_position)
         )
 
-    def get_connections_deadhead_trip(self, destination: "TrainStation", weight: int) -> list["Connection"]:
+    def get_connections_deadhead_trip(
+        self, destination: "TrainStation", weight: int
+    ) -> list["Connection"]:
         """
         Returns all trips between the stations as connections.
         This maps all arranements to all arrangements if the type of the trains is preserved.
@@ -86,13 +117,24 @@ class TrainStation(object):
 
         This function calculates the same as get_connections_turnaround, but is kept for real world modelling analogies.
         """
-        return self.get_connections_turnaround(destination, weight, preserve_position=False)
+        return self.get_connections_turnaround(
+            destination, weight, preserve_position=False
+        )
+
 
 class Connection(object):
     """
     Describes a connection between two stations outside of a timetable trip.
     """
-    def __init__(self, origin: TrainStation, destination: TrainStation, weight: int, arrangement_origin: TrainArrangment, arrangement_destination: TrainArrangment):
+
+    def __init__(
+        self,
+        origin: TrainStation,
+        destination: TrainStation,
+        weight: int,
+        arrangement_origin: TrainArrangment,
+        arrangement_destination: TrainArrangment,
+    ):
         self.origin: TrainStation = origin
         self.destination: TrainStation = destination
         self.weight: int = weight
@@ -101,6 +143,7 @@ class Connection(object):
 
     def __str__(self):
         return f"{self.origin.name} -> {self.destination.name} with {self.arrangement_origin} --{self.weight}--> {self.arrangement_destination}"
+
 
 class TimeTableTrip(object):
     """
@@ -112,8 +155,9 @@ class TimeTableTrip(object):
         self.origin: TrainStation = stationA
         self.destination: TrainStation = stationB
 
-    def get_all_connections(self, weight: int) -> list[Connection,...]:
+    def get_all_connections(self, weight: int) -> list[Connection, ...]:
         return self.origin.get_connections(self.destination, weight)
+
 
 if __name__ == "__main__":
     s1 = TrainStation("A")
