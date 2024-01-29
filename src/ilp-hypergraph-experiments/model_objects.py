@@ -20,8 +20,8 @@ class TrainStation(object):
         self,
         name: str,
         max_train_len_station: int = 1,
-        possible_arrangements: Iterable[TrainArrangment] = None,
-        disallow_arrangements: Iterable[TrainArrangment] = None,
+        possible_arrangements: Iterable[TrainArrangment] | None = None,
+        disallow_arrangements: Iterable[TrainArrangment] | None = None,
     ):
         self.name: str = name
         if max_train_len_station > max_train_len_global:
@@ -92,12 +92,15 @@ class Connection(object):
     """
     Describes a connection between two stations outside of a timetable trip.
     """
-    def __init__(self, origin: TrainStation, destination: TrainStation, weight: int, arrangement_origin: TrainArrangment, arrangement_destination):
+    def __init__(self, origin: TrainStation, destination: TrainStation, weight: int, arrangement_origin: TrainArrangment, arrangement_destination: TrainArrangment):
         self.origin: TrainStation = origin
         self.destination: TrainStation = destination
         self.weight: int = weight
         self.arrangement_origin: TrainArrangment = arrangement_origin
         self.arrangement_destination: TrainArrangment = arrangement_destination
+
+    def __str__(self):
+        return f"{self.origin.name} -> {self.destination.name} with {self.arrangement_origin} --{self.weight}--> {self.arrangement_destination}"
 
 class TimeTableTrip(object):
     """
@@ -111,3 +114,9 @@ class TimeTableTrip(object):
 
     def get_all_connections(self, weight: int) -> list[Connection,...]:
         return self.origin.get_connections(self.destination, weight)
+
+if __name__ == "__main__":
+    s1 = TrainStation("A")
+    s2 = TrainStation("B")
+    con = Connection(s1, s2, 10, (1, True, 1), (1, False, 1))
+    print(con)
