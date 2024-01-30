@@ -60,13 +60,18 @@ def configure_model(m: gp.Model) -> dict[Connection, gp.Var]:
 
 def run_model():
     with gp.Model() as m:
-        configure_model(m)
+        variable_map: dict[Connection, gp.Var] = configure_model(m)
 
         tic = time.perf_counter()
         m.optimize()
         toc = time.perf_counter()
 
         print(f"Optimal objective value: {m.objVal}")
+        print("Choosen edges:")
+        for var in sorted(
+            filter(lambda v: v.X, variable_map.values()), key=lambda v: v.VarName
+        ):
+            print(var.VarName)
         print(f"\nRuntime: {toc-tic}s")
 
 
