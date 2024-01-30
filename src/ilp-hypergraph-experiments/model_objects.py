@@ -67,7 +67,11 @@ class TrainStation(object):
         return self
 
     def get_connections(
-        self, destination: "TrainStation", weight: int, preserve_position: bool = True
+        self,
+        destination: "TrainStation",
+        weight: int,
+        preserve_position: bool = True,
+        inside: bool = False,
     ) -> list["Connection"]:
         """
         Returns all direct turns between the stations as connections.
@@ -79,19 +83,27 @@ class TrainStation(object):
                 destination.allowed_arrangements
             )
             return list(
-                Connection(self, destination, weight, arrangement, arrangement)
+                Connection(
+                    self, destination, weight, arrangement, arrangement, inside=inside
+                )
                 for arrangement in possible_direct
             )
         else:
             return list(
-                Connection(self, destination, weight, arr_origin, arr_dest)
+                Connection(
+                    self, destination, weight, arr_origin, arr_dest, inside=inside
+                )
                 for arr_origin in self.allowed_arrangements
                 for arr_dest in destination.allowed_arrangements
                 if arr_origin[0] == arr_dest[0] and arr_origin[1] == arr_dest[1]
             )
 
     def get_connections_turnaround(
-        self, destination: "TrainStation", weight: int, preserve_position: bool = True
+        self,
+        destination: "TrainStation",
+        weight: int,
+        preserve_position: bool = True,
+        inside: bool = False,
     ) -> list["Connection"]:
         """
         Returns all turnaround turns between the stations as connections.
@@ -99,7 +111,7 @@ class TrainStation(object):
         -@ preserve_position: Disallows coupling or uncoupling in most cases.
         """
         return list(
-            Connection(self, destination, weight, arr_origin, arr_dest)
+            Connection(self, destination, weight, arr_origin, arr_dest, inside=inside)
             for arr_origin in self.allowed_arrangements
             for arr_dest in destination.allowed_arrangements
             if arr_origin[0] == arr_dest[0]
@@ -108,7 +120,7 @@ class TrainStation(object):
         )
 
     def get_connections_deadhead_trip(
-        self, destination: "TrainStation", weight: int
+        self, destination: "TrainStation", weight: int, inside: bool = False
     ) -> list["Connection"]:
         """
         Returns all trips between the stations as connections.
@@ -118,7 +130,7 @@ class TrainStation(object):
         This function calculates the same as get_connections_turnaround, but is kept for real world modelling analogies.
         """
         return self.get_connections_turnaround(
-            destination, weight, preserve_position=False
+            destination, weight, preserve_position=False, inside=inside
         )
 
 
@@ -134,12 +146,18 @@ class Connection(object):
         weight: int,
         arrangement_origin: TrainArrangment,
         arrangement_destination: TrainArrangment,
+        inside: bool = False,
     ):
         self.origin: TrainStation = origin
         self.destination: TrainStation = destination
         self.weight: int = weight
         self.arrangement_origin: TrainArrangment = arrangement_origin
         self.arrangement_destination: TrainArrangment = arrangement_destination
+        self.inside: bool = inside
+        if self.origin != self.destination and self.inside:
+            raise RuntimeError(
+                f"The connection between station {self.origin} and {self.destination} can't be a connection inside a trainstation."
+            )
 
     def __str__(self):
         return f"{self.origin.name} -> {self.destination.name} with {self.arrangement_origin} --{self.weight}--> {self.arrangement_destination}"

@@ -37,23 +37,43 @@ def configure_model(m: gp.Model) -> dict[Connection, gp.Var]:
         m.addConstr(
             gp.quicksum(trip_connections) >= 1, name="Trips need to be implemented"
         )
-    # Flow constraints
+    # Flow constraints trainstations
+    # Since the arrangements of each station represent the trains coming into and out of the trainstation,
+    # we need to differ between edges which only flow inside the station and flow outside the station.
     for station in stations:
         for arrangement in station.allowed_arrangements:
-            out_edges = (
-                variable_map[con]
-                for con in connections
-                if con.origin == station and arrangement == con.arrangement_origin
-            )
-            in_edges = (
-                variable_map[con]
-                for con in connections
-                if con.destination == station
-                and arrangement == con.arrangement_destination
+            in_edges_outside: list[Connection, ...] = []
+            in_edges_inside: list[Connection, ...] = []
+            out_edges_outside: list[Connection, ...] = []
+            out_edges_inside: list[Connection, ...] = []
+            for con in connections:
+                if con.inside:
+                    if (
+                        con.destination == station
+                        and arrangement == con.arrangement_destination
+                    ):
+                        in_edges_inside.append(variable_map[con])
+                    if con.origin == station and arrangement == con.arrangement_origin:
+                        out_edges_inside.append(variable_map[con])
+                else:
+                    if (
+                        con.destination == station
+                        and arrangement == con.arrangement_destination
+                    ):
+                        in_edges_outside.append(variable_map[con])
+                    if con.origin == station and arrangement == con.arrangement_origin:
+                        out_edges_outside.append(variable_map[con])
+            m.addConstr(
+                gp.quicksum(in_edges_outside) == gp.quicksum(out_edges_inside),
+                name="Flow constraint into stations",
             )
             m.addConstr(
-                gp.quicksum(out_edges) == gp.quicksum(in_edges), name="Flow constraint"
+                gp.quicksum(in_edges_inside) == gp.quicksum(out_edges_outside),
+                name="Flow constraint out of stations",
             )
+            # The constraint inside_in == inside_out is not needed since it is covered by the other two.
+    # Flow constraint inside trainstations
+    # Only choose as much trains as trainstations allows
 
     return variable_map
 

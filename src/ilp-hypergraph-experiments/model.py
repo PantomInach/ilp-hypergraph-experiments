@@ -110,34 +110,40 @@ for trip in timetable_trips:
 # Add all other connections between stations themself.
 # Station A allow almost everything.
 connections.update(
-    get_station("A").get_connections(get_station("A"), weight=0)
+    get_station("A").get_connections(get_station("A"), weight=0, inside=True)
 )  # Station A direct turn
 connections.update(
     get_station("A").get_connections_turnaround(
-        get_station("A"), weight=1, preserve_position=False
+        get_station("A"), weight=1, preserve_position=False, inside=True
     )
 )  # Station A turnaround turn with coupling
 connections.update(
-    get_station("A").get_connections_deadhead_trip(get_station("A"), weight=10)
+    get_station("A").get_connections_deadhead_trip(
+        get_station("A"), weight=10, inside=True
+    )
 )  # Station A deadhead trips turn
 # Allow split up at Station B
 connections.update(
     get_station("B").get_connections(
-        get_station("B"), weight=0, preserve_position=False
+        get_station("B"), weight=0, preserve_position=False, inside=True
     )
 )
 # Allow split up at station C
 connections.update(
     get_station("C").get_connections(
-        get_station("C"), weight=0, preserve_position=False
+        get_station("C"), weight=0, preserve_position=False, inside=True
     )
 )
 # Staion D only direct through turns.
-connections.update(get_station("D").get_connections(get_station("D"), weight=0))
-# Staion E only direct through turns.
-connections.update(get_station("E").get_connections(get_station("E"), weight=0))
 connections.update(
-    get_station("E").get_connections_turnaround(get_station("E"), weight=0)
+    get_station("D").get_connections(get_station("D"), weight=0, inside=True)
+)
+# Staion E only direct through turns.
+connections.update(
+    get_station("E").get_connections(get_station("E"), weight=0, inside=True)
+)
+connections.update(
+    get_station("E").get_connections_turnaround(get_station("E"), weight=0, inside=True)
 )
 
 # The connections between all other staions are modelled by deadhead trips with extra distance 10, if the stations are connected.
@@ -149,6 +155,17 @@ for origin in stations:
         if dist is None:
             continue
         connections.update(origin.get_connections_deadhead_trip(dest, weight=dist + 10))
+
+
+print(
+    "\nFor inside D: ",
+    tuple(
+        map(
+            str,
+            get_station("D").get_connections(get_station("D"), weight=0, inside=True),
+        )
+    ),
+)
 
 if __name__ == "__main__":
     # Test if the given model is configured right.
