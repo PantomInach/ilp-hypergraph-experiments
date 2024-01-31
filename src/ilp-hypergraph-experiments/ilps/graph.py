@@ -1,13 +1,3 @@
-# from model import connections, stations, timetable_trips
-
-# Solve the following MIP:
-#  maximize
-#        x +   y + 2 z
-#  subject to
-#        x + 2 y + 3 z <= 4
-#        x +   y       >= 1
-#        x, y, z binary
-
 from model import connections, stations, timetable_trips
 from model_objects import Connection
 from settings import max_train_len_global
