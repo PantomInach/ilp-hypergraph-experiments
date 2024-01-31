@@ -86,22 +86,23 @@ def configure_model(m: gp.Model) -> dict[Connection, gp.Var]:
         )
     # Ensure positions are valid.
     # 1 >= trains at pos 1 >= trains at pos 2 >= ...
-    for station in stations:
-        position_map = [[] for _ in range(max_train_len_global)]
-        for con, var in variable_map.items():
-            if con.origin != station or con.inside:
-                continue
-            position_map[con.arrangement_origin[2]].append(var)
+    for stationA in stations:
+        for stationB in stations:
+            position_map = [[] for _ in range(max_train_len_global)]
+            for con, var in variable_map.items():
+                if con.destination != stationA or con.origin != stationB or con.inside:
+                    continue
+                position_map[con.arrangement_origin[2]].append(var)
 
-        m.addConstr(
-            1 >= gp.quicksum(position_map[0]),
-            name="Only one train can be at possition one",
-        )
-        for i in range(max_train_len_global - 1):
             m.addConstr(
-                gp.quicksum(position_map[i]) >= gp.quicksum(position_map[i + 1]),
-                name=f"Need at least as many trains at position {i + 1} as at position {i}",
+                1 >= gp.quicksum(position_map[0]),
+                name="Only one train can be at possition one",
             )
+            for i in range(max_train_len_global - 1):
+                m.addConstr(
+                    gp.quicksum(position_map[i]) >= gp.quicksum(position_map[i + 1]),
+                    name=f"Need at least as many trains at position {i + 1} as at position {i}",
+                )
 
     return variable_map
 
