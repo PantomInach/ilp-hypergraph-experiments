@@ -28,6 +28,15 @@ def configure_model(m: gp.Model) -> dict[Connection, gp.Var]:
     )
 
     # Add constraints
+    fullfill_timetable_trips(m, variable_map)
+    flow_constraints(m, variable_map)
+    length_train(m, variable_map)
+    valid_positioning(m, variable_map)
+
+    return variable_map
+
+
+def fullfill_timetable_trips(m: gp.Model, variable_map: dict[Connection, gp.Var]):
     # Fullfill timetable trips
     for trip in timetable_trips:
         trip_connections = tuple(
@@ -38,6 +47,9 @@ def configure_model(m: gp.Model) -> dict[Connection, gp.Var]:
         m.addConstr(
             gp.quicksum(trip_connections) >= 1, name="Trips need to be implemented"
         )
+
+
+def flow_constraints(m: gp.Model, variable_map: dict[Connection, gp.Var]):
     # Flow constraints trainstations
     # Since the arrangements of each station represent the trains coming into and out of the trainstation,
     # we need to differ between edges which only flow inside the station and flow outside the station.
@@ -73,6 +85,9 @@ def configure_model(m: gp.Model) -> dict[Connection, gp.Var]:
                 name="Flow constraint out of stations",
             )
             # The constraint inside_in == inside_out is not needed since it is covered by the other two.
+
+
+def length_train(m: gp.Model, variable_map: dict[Connection, gp.Var]):
     # A train composition should not exced the maximal amount of trains a station can support.
     for station in stations:
         edges_into = (
@@ -84,6 +99,9 @@ def configure_model(m: gp.Model) -> dict[Connection, gp.Var]:
             gp.quicksum(edges_into) <= station.max_train_len,
             name="Respect the stations max train length",
         )
+
+
+def valid_positioning(m: gp.Model, variable_map: dict[Connection, gp.Var]):
     # Ensure positions are valid.
     # 1 >= trains at pos 1 >= trains at pos 2 >= ...
     for stationA in stations:
@@ -103,8 +121,6 @@ def configure_model(m: gp.Model) -> dict[Connection, gp.Var]:
                     gp.quicksum(position_map[i]) >= gp.quicksum(position_map[i + 1]),
                     name=f"Need at least as many trains at position {i + 1} as at position {i}",
                 )
-
-    return variable_map
 
 
 def run_model():
