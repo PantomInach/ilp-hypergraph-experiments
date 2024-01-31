@@ -91,7 +91,7 @@ def configure_model(m: gp.Model) -> dict[Connection, gp.Var]:
         for con, var in variable_map.items():
             if con.origin != station or con.inside:
                 continue
-            position_map[con.arrangement_origin[2] - 1].append(var)
+            position_map[con.arrangement_origin[2]].append(var)
 
         m.addConstr(
             1 >= gp.quicksum(position_map[0]),
