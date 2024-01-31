@@ -177,6 +177,29 @@ class TimeTableTrip(object):
         return self.origin.get_connections(self.destination, weight)
 
 
+class Hyperedge(object):
+    """
+    Hyperedge between trainstations.
+    """
+
+    def __init__(self, *connections: Connection, inside: bool = False):
+        self.arces: set[Connection] = set(connections)
+        self.weight: int = sum((arc.weight for arc in self.arces))
+        self.inside: bool = False
+        self.origins: set[tuple[TrainStation, TrainArrangment]] = set(
+            ((arc.origin, arc.arrangement_origin) for arc in self.arces)
+        )
+        self.destinations: set[tuple[TrainStation, TrainArrangment]] = set(
+            ((arc.destination, arc.arrangement_destination) for arc in self.arces)
+        )
+        num_origins: int = len(set(s for (s, _) in self.origins))
+        num_destinations: int = len(set(s for (s, _) in self.destinations))
+        if num_origins > 1 and num_destinations > 1:
+            raise RuntimeError(
+                "Hypheredges can not map from multiple stations to multiple stations."
+            )
+
+
 if __name__ == "__main__":
     s1 = TrainStation("A")
     s2 = TrainStation("B")
