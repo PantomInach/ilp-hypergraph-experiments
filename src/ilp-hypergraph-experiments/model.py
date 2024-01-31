@@ -157,16 +157,6 @@ for origin in stations:
         connections.update(origin.get_connections_deadhead_trip(dest, weight=dist + 10))
 
 
-print(
-    "\nFor inside D: ",
-    tuple(
-        map(
-            str,
-            get_station("D").get_connections(get_station("D"), weight=0, inside=True),
-        )
-    ),
-)
-
 if __name__ == "__main__":
     # Test if the given model is configured right.
     # Test if all TrainStation have different names
