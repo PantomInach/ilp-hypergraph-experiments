@@ -10,6 +10,7 @@
 
 from model import connections, stations, timetable_trips
 from model_objects import Connection
+from settings import max_train_len_global
 import gurobipy as gp
 import time
 
@@ -72,8 +73,35 @@ def configure_model(m: gp.Model) -> dict[Connection, gp.Var]:
                 name="Flow constraint out of stations",
             )
             # The constraint inside_in == inside_out is not needed since it is covered by the other two.
-    # Flow constraint inside trainstations
-    # Only choose as much trains as trainstations allows
+    # A train composition should not exced the maximal amount of trains a station can support.
+    for station in stations:
+        edges_into = (
+            var
+            for con, var in variable_map.items()
+            if con.destination == station and not con.inside
+        )
+        m.addConstr(
+            gp.quicksum(edges_into) <= station.max_train_len,
+            name="Respect the stations max train length",
+        )
+    # Ensure positions are valid.
+    # 1 >= trains at pos 1 >= trains at pos 2 >= ...
+    for station in stations:
+        position_map = [[] for _ in range(max_train_len_global)]
+        for con, var in variable_map.items():
+            if con.origin != station or con.inside:
+                continue
+            position_map[con.arrangement_origin[2] - 1].append(var)
+
+        m.addConstr(
+            1 >= gp.quicksum(position_map[0]),
+            name="Only one train can be at possition one",
+        )
+        for i in range(max_train_len_global - 1):
+            m.addConstr(
+                gp.quicksum(position_map[i]) >= gp.quicksum(position_map[i + 1]),
+                name=f"Need at least as many trains at position {i + 1} as at position {i}",
+            )
 
     return variable_map
 
