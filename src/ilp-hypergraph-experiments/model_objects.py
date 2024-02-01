@@ -192,6 +192,13 @@ class Hyperedge(object):
         self.destinations: set[tuple[TrainStation, TrainArrangment]] = set(
             ((arc.destination, arc.arrangement_destination) for arc in self.arces)
         )
+        self.origin_arces: dict[TrainStation, Connection] = {}
+        self.destination_arces: dict[TrainStation, Connection] = {}
+        for arc in self.arces:
+            self.origin_arces.setdefault(arc.origin, [])
+            self.origin_arces[arc.origin].append(arc)
+            self.destination_arces.setdefault(arc.destination, [])
+            self.destination_arces[arc.destination].append(arc)
         num_origins: int = len(set(s for (s, _) in self.origins))
         num_destinations: int = len(set(s for (s, _) in self.destinations))
         if num_origins > 1 and num_destinations > 1:
