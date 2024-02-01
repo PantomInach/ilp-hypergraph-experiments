@@ -206,6 +206,12 @@ class Hyperedge(object):
                 "Hypheredges can not map from multiple stations to multiple stations."
             )
 
+    def __str__(self):
+        res = f"Hyperedge of weight {self.weight}:"
+        for arc in self.arces:
+            res += "\n " + str(arc)
+        return res
+
 
 if __name__ == "__main__":
     s1 = TrainStation("A")

@@ -1,6 +1,8 @@
 from model import connections, timetable_trips, stations
-from model_objects import Hyperedge
+from model_objects import Hyperedge, Connection
 from settings import max_train_len_global
+from itertools import combinations
+import time
 
 
 def filter_length_train(hyperedge: Hyperedge) -> bool:
@@ -31,5 +33,52 @@ def _well_ordere(positions: tuple[int]) -> bool:
     return True
 
 
-def generate_hyperedges():
-    raise NotImplementedError
+def generate_hyperedges() -> set[Hyperedge]:
+    hyperedges: list[Hyperedge] = []
+    for station in stations:
+        print("Processing station ", station.name)
+        in_cons_inside: list[Connection] = []
+        in_cons_outside: list[Connection] = []
+        out_cons_outside: list[Connection] = []
+        for con in connections:
+            if con.destination == station:
+                if con.inside:
+                    in_cons_inside.append(con)
+                else:
+                    in_cons_outside.append(con)
+            elif con.origin == station and not con.inside:
+                out_cons_outside.append(con)
+
+        for i in range(1, max_train_len_global + 1):
+            print("Building combinations. Number of arces per hyperedge: ", i)
+            hyperedges.extend(
+                (Hyperedge(*arces) for arces in combinations(in_cons_inside, r=i))
+            )
+            hyperedges.extend(
+                (Hyperedge(*arces) for arces in combinations(in_cons_outside, r=i))
+            )
+            hyperedges.extend(
+                (Hyperedge(*arces) for arces in combinations(out_cons_outside, r=i))
+            )
+            print("Number of hyperedges: ", len(hyperedges))
+    return set(hyperedges)
+
+
+def get_filtered_hyperedges() -> set[Hyperedge]:
+    return list(
+        filter(
+            lambda h: filter_length_train(h) and filter_valid_positioning(h),
+            generate_hyperedges(),
+        )
+    )
+
+
+def time_generate_hyperedges() -> float:
+    tic = time.perf_counter()
+    hyperedges = get_filtered_hyperedges()
+    toc = time.perf_counter()
+    for x in hyperedges[:10]:
+        print(x)
+    print(len(hyperedges))
+    print(f"\nRuntime: {toc-tic}s")
+    return toc - tic
