@@ -192,8 +192,8 @@ class Hyperedge(object):
         self.destinations: set[tuple[TrainStation, TrainArrangment]] = set(
             ((arc.destination, arc.arrangement_destination) for arc in self.arces)
         )
-        self.origin_arces: dict[TrainStation, Connection] = {}
-        self.destination_arces: dict[TrainStation, Connection] = {}
+        self.origin_arces: dict[TrainStation, list[Connection]] = {}
+        self.destination_arces: dict[TrainStation, list[Connection]] = {}
         for arc in self.arces:
             self.origin_arces.setdefault(arc.origin, [])
             self.origin_arces[arc.origin].append(arc)

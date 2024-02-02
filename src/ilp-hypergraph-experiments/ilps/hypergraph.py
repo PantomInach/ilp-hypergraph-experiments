@@ -25,6 +25,18 @@ def filter_valid_positioning(hyperedge: Hyperedge) -> bool:
     return True
 
 
+def filter_timetable_trips(hyperedge: Hyperedge) -> bool:
+    """Ensures timetable trips only happen between two stations."""
+    for trip in timetable_trips:
+        if (
+            trip.origin in hyperedge.origin_arces.keys()
+            and trip.destination in hyperedge.destination_arces.keys()
+        ):
+            if len(hyperedge.origin_arces) > 1 or len(hyperedge.destination_arces) > 1:
+                return False
+    return True
+
+
 def _well_ordere(positions: tuple[int]) -> bool:
     if len(positions) != len(set(positions)):
         return False
@@ -67,7 +79,9 @@ def generate_hyperedges() -> set[Hyperedge]:
 def get_filtered_hyperedges() -> set[Hyperedge]:
     return list(
         filter(
-            lambda h: filter_length_train(h) and filter_valid_positioning(h),
+            lambda h: filter_length_train(h)
+            and filter_valid_positioning(h)
+            and filter_timetable_trips(h),
             generate_hyperedges(),
         )
     )
