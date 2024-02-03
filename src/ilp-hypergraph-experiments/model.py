@@ -5,11 +5,11 @@ from model_objects import TrainStation, Connection, TimeTableTrip
 # Stations: List of all trainstations
 stations: tuple[TrainStation, ...] = tuple(
     [
-        TrainStation("A", 3),
-        TrainStation("B", 3),
-        TrainStation("C", 3),
-        TrainStation("D", 2),
-        TrainStation("E", 1),
+        TrainStation("A", max_train_len_station=3),
+        TrainStation("B", max_train_len_station=3),
+        TrainStation("C", max_train_len_station=3),
+        TrainStation("D", max_train_len_station=2),
+        TrainStation("E", max_train_len_station=1),
     ]
 )
 

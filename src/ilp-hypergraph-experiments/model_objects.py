@@ -176,6 +176,9 @@ class TimeTableTrip(object):
     def get_all_connections(self, weight: int) -> list[Connection, ...]:
         return self.origin.get_connections(self.destination, weight)
 
+    def __str__(self):
+        return "From " + self.origin.name + " to " + self.destination.name
+
 
 class Hyperedge(object):
     """
@@ -183,9 +186,11 @@ class Hyperedge(object):
     """
 
     def __init__(self, *connections: Connection, inside: bool = False):
-        self.arces: set[Connection] = set(connections)
+        self.arces: set[Connection] = set(con for con in connections if con is not None)
         self.weight: int = sum((arc.weight for arc in self.arces))
-        self.inside: bool = False
+        self.inside: bool = inside
+        if all(con.inside for con in self.arces):
+            self.inside: bool = True
         self.origins: set[tuple[TrainStation, TrainArrangment]] = set(
             ((arc.origin, arc.arrangement_origin) for arc in self.arces)
         )
@@ -211,6 +216,37 @@ class Hyperedge(object):
         for arc in self.arces:
             res += "\n " + str(arc)
         return res
+
+    def contains_destination_node(
+        self, station: TrainStation, arrangement: TrainArrangment
+    ) -> bool:
+        for arc in self.arces:
+            if (
+                arc.destination == station
+                and arc.arrangement_destination == arrangement
+            ):
+                return True
+        return False
+
+    def contains_origin_node(
+        self, station: TrainStation, arrangement: TrainArrangment
+    ) -> bool:
+        for arc in self.arces:
+            if arc.origin == station and arc.arrangement_origin == arrangement:
+                return True
+        return False
+
+    def runs_to_station(self, station: TrainStation) -> bool:
+        for arc in self.arces:
+            if arc.destination == station:
+                return True
+        return False
+
+    def comes_from_station(self, station: TrainStation) -> bool:
+        for arc in self.arces:
+            if arc.origin == station:
+                return True
+        return False
 
 
 if __name__ == "__main__":

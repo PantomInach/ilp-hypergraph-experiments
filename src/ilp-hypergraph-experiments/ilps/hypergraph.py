@@ -2,15 +2,16 @@ from model import connections, timetable_trips, stations
 from model_objects import Hyperedge, Connection
 from settings import max_train_len_global
 from itertools import combinations
+import gurobipy as gp
 import time
 
 
 def filter_length_train(hyperedge: Hyperedge) -> bool:
     for station, arces in hyperedge.origin_arces.items():
-        if station.max_train_len > len(arces) or len(arces) > max_train_len_global:
+        if station.max_train_len < len(arces) or max_train_len_global < len(arces):
             return False
     for station, arces in hyperedge.destination_arces.items():
-        if station.max_train_len > len(arces) or len(arces) > max_train_len_global:
+        if station.max_train_len < len(arces) or max_train_len_global < len(arces):
             return False
     return True
 
@@ -49,6 +50,9 @@ def generate_hyperedges() -> set[Hyperedge]:
     hyperedges: list[Hyperedge] = []
     for station in stations:
         print("Processing station ", station.name)
+        # in_cons_inside: list[Connection] = [None, None]
+        # in_cons_outside: list[Connection] = [None, None]
+        # out_cons_outside: list[Connection] = [None, None]
         in_cons_inside: list[Connection] = []
         in_cons_outside: list[Connection] = []
         out_cons_outside: list[Connection] = []
@@ -61,6 +65,27 @@ def generate_hyperedges() -> set[Hyperedge]:
             elif con.origin == station and not con.inside:
                 out_cons_outside.append(con)
 
+        # print(
+        #     "Into node connection inside of station: ",
+        #     "\n".join(str(c) for c in in_cons_inside),
+        # )
+        # print(
+        #     "Out node connection inside of station: ",
+        #     "\n".join(str(c) for c in in_cons_inside),
+        # )
+        # print(
+        #     "Out node connection outside of station: ",
+        #     "\n".join(str(c) for c in out_cons_outside),
+        # )
+        # hyperedges.extend(
+        #     Hyperedge(*arces) for arces in combinations(in_cons_inside, r=3)
+        # )
+        # hyperedges.extend(
+        #     Hyperedge(*arces) for arces in combinations(in_cons_outside, r=3)
+        # )
+        # hyperedges.extend(
+        #     Hyperedge(*arces) for arces in combinations(out_cons_outside, r=3)
+        # )
         for i in range(1, max_train_len_global + 1):
             print("Building combinations. Number of arces per hyperedge: ", i)
             hyperedges.extend(
@@ -72,16 +97,15 @@ def generate_hyperedges() -> set[Hyperedge]:
             hyperedges.extend(
                 (Hyperedge(*arces) for arces in combinations(out_cons_outside, r=i))
             )
-            print("Number of hyperedges: ", len(hyperedges))
+        print("Number of hyperedges: ", len(hyperedges))
     return set(hyperedges)
 
 
 def get_filtered_hyperedges() -> set[Hyperedge]:
     return list(
         filter(
-            lambda h: filter_length_train(h)
-            and filter_valid_positioning(h)
-            and filter_timetable_trips(h),
+            lambda h: filter_length_train(h) and filter_valid_positioning(h),
+            # and filter_timetable_trips(h),
             generate_hyperedges(),
         )
     )
@@ -96,3 +120,88 @@ def time_generate_hyperedges() -> float:
     print(len(hyperedges))
     print(f"\nRuntime: {toc-tic}s")
     return toc - tic
+
+
+def configure_model(m: gp.Model) -> dict[Hyperedge, gp.Var]:
+    hyperedges: set[Hyperedge] = get_filtered_hyperedges()
+    inside_hyperedes: set[Hyperedge] = set(h for h in hyperedges if h.inside)
+    print("Number of inside hyperedges: ", len(inside_hyperedes))
+    with open("hyperedges.txt", "w") as f:
+        x = ""
+        for h in sorted(inside_hyperedes, key=lambda h: len(h.arces)):
+            x += "\n" + str(h)
+        f.write(x)
+
+    variable_map: dict[Hyperedge, gp.Var] = dict(
+        (h, m.addVar(vtype="B", name=str(h))) for h in hyperedges
+    )
+
+    m.setObjective(
+        gp.quicksum(h.weight * var for h, var in variable_map.items()),
+        gp.GRB.MINIMIZE,
+    )
+    fullfill_timetable_trips(m, variable_map)
+    flow_constraints(m, variable_map)
+
+    return variable_map
+
+
+def fullfill_timetable_trips(m: gp.Model, variable_map: dict[Hyperedge, gp.Var]):
+    for trip in timetable_trips:
+        possible_hyperedges: tuple[gp.Var] = tuple(
+            var
+            for h, var in variable_map.items()
+            if not h.inside
+            and h.comes_from_station(trip.origin)
+            and h.runs_to_station(trip.destination)
+        )
+        print("Length of possible_hyperedges: ", len(possible_hyperedges))
+        m.addConstr(
+            gp.quicksum(possible_hyperedges) == 1, name="Trips need to be implemented"
+        )
+
+
+def flow_constraints(m: gp.Model, variable_map: dict[Hyperedge, gp.Var]):
+    for station in stations:
+        for arrangement in station.allowed_arrangements:
+            inside_into: list[Hyperedge] = []
+            inside_out: list[Hyperedge] = []
+            outside_into: list[Hyperedge] = []
+            outside_out: list[Hyperedge] = []
+            for h in variable_map.keys():
+                if h.inside:
+                    if h.contains_origin_node(station, arrangement):
+                        inside_out.append(h)
+                    if h.contains_destination_node(station, arrangement):
+                        inside_into.append(h)
+                else:
+                    if h.contains_origin_node(station, arrangement):
+                        outside_out.append(h)
+                    if h.contains_destination_node(station, arrangement):
+                        outside_into.append(h)
+
+            m.addConstr(
+                gp.quicksum(variable_map[h] for h in outside_into)
+                == gp.quicksum(variable_map[h] for h in inside_out)
+            )
+            m.addConstr(
+                gp.quicksum(variable_map[h] for h in inside_into)
+                == gp.quicksum(variable_map[h] for h in outside_out)
+            )
+
+
+def run_hyper_model():
+    with gp.Model() as m:
+        variable_map: dict[Connection, gp.Var] = configure_model(m)
+
+        tic = time.perf_counter()
+        m.optimize()
+        toc = time.perf_counter()
+
+        print(f"Optimal objective value: {m.objVal}")
+        print("Choosen edges:")
+        for var in sorted(
+            filter(lambda v: v.X, variable_map.values()), key=lambda v: v.VarName
+        ):
+            print(var.VarName)
+        print(f"\nRuntime: {toc-tic}s")
