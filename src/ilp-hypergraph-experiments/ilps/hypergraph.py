@@ -1,9 +1,16 @@
-from model import connections, timetable_trips, stations
-from model_objects import Hyperedge, Connection
+from model import connections, timetable_trips, stations, get_station
+from model_objects import Hyperedge, Connection, TrainStation
 from settings import max_train_len_global
-from itertools import combinations
+from itertools import combinations, product
 import gurobipy as gp
 import time
+
+from typing import Iterable
+
+
+def _write(hs: Iterable[Hyperedge]):
+    with open("hyperedges.txt", "w") as f:
+        f.write("\n".join(str(h) for h in sorted(hs, key=lambda h: len(h.arces))))
 
 
 def filter_length_train(hyperedge: Hyperedge) -> bool:
@@ -126,11 +133,6 @@ def configure_model(m: gp.Model) -> dict[Hyperedge, gp.Var]:
     hyperedges: set[Hyperedge] = get_filtered_hyperedges()
     inside_hyperedes: set[Hyperedge] = set(h for h in hyperedges if h.inside)
     print("Number of inside hyperedges: ", len(inside_hyperedes))
-    with open("hyperedges.txt", "w") as f:
-        x = ""
-        for h in sorted(inside_hyperedes, key=lambda h: len(h.arces)):
-            x += "\n" + str(h)
-        f.write(x)
 
     variable_map: dict[Hyperedge, gp.Var] = dict(
         (h, m.addVar(vtype="B", name=str(h))) for h in hyperedges
@@ -142,6 +144,7 @@ def configure_model(m: gp.Model) -> dict[Hyperedge, gp.Var]:
     )
     fullfill_timetable_trips(m, variable_map)
     flow_constraints(m, variable_map)
+    single_inside_hyperedge(m, variable_map)
 
     return variable_map
 
@@ -151,13 +154,25 @@ def fullfill_timetable_trips(m: gp.Model, variable_map: dict[Hyperedge, gp.Var])
         possible_hyperedges: tuple[gp.Var] = tuple(
             var
             for h, var in variable_map.items()
-            if not h.inside
-            and h.comes_from_station(trip.origin)
-            and h.runs_to_station(trip.destination)
+            if not h.inside and h.has_arc_from_to(trip.origin, trip.destination)
         )
         print("Length of possible_hyperedges: ", len(possible_hyperedges))
         m.addConstr(
-            gp.quicksum(possible_hyperedges) == 1, name="Trips need to be implemented"
+            gp.quicksum(possible_hyperedges) == 1,
+            name="Trips need to be implemented",
+        )
+
+
+def single_inside_hyperedge(m: gp.Model, variable_map: dict[Hyperedge, gp.Var]):
+    for station in stations:
+        hyperedge_inside: list[Hyperedge] = []
+        for h, var in variable_map.items():
+            if h.inside and h.comes_from_station(station):
+                hyperedge_inside.append(var)
+        print(len(hyperedge_inside))
+        m.addConstr(
+            gp.quicksum(hyperedge_inside) == 1,
+            "Only one hyperedge inside a train station",
         )
 
 
