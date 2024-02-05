@@ -37,6 +37,9 @@ class TrainStation(object):
         elif disallow_arrangements:
             self.allowed_arrangements -= set(disallow_arrangements)
 
+    def __str__(self):
+        return f"Station {self.name}"
+
     def discard_arrangements_by(
         self,
         types: Iterable[int] | None = None,
@@ -216,6 +219,29 @@ class Hyperedge(object):
         for arc in self.arces:
             res += "\n " + str(arc)
         return res
+
+    def has_arc_from_to(self, origin: TrainStation, destination: TrainStation) -> bool:
+        for arc in self.arces:
+            if arc.origin == origin and arc.destination == destination:
+                return True
+        return False
+
+    def has_arc_from_to_arr(
+        self,
+        origin: TrainStation,
+        origin_arrangement: TrainArrangment,
+        destination: TrainStation,
+        destination_arrangement: TrainArrangment,
+    ) -> bool:
+        for arc in self.arces:
+            if (
+                arc.origin == origin
+                and arc.arrangement_origin == origin_arrangement
+                and arc.destination == destination
+                and arc.arrangement_destination == destination_arrangement
+            ):
+                return True
+        return False
 
     def contains_destination_node(
         self, station: TrainStation, arrangement: TrainArrangment
