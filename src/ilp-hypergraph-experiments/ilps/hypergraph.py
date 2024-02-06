@@ -174,9 +174,8 @@ def single_inside_hyperedge(m: gp.Model, variable_map: dict[Hyperedge, gp.Var]):
         for h, var in variable_map.items():
             if h.inside and h.comes_from_station(station):
                 hyperedge_inside.append(var)
-        print(len(hyperedge_inside))
         m.addConstr(
-            gp.quicksum(hyperedge_inside) == 1,
+            gp.quicksum(hyperedge_inside) <= 1,
             "Only one hyperedge inside a train station",
         )
 
