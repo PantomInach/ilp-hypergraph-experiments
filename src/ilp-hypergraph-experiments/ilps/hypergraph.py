@@ -69,49 +69,11 @@ def generate_hyperedges() -> set[Hyperedge]:
                 )
             )
         print("Number of hyperedges: ", len(hyperedges))
-        # for station in stations:
-        #     print("Processing station ", station.name)
-        #     in_cons_inside: list[Connection] = []
-        #     in_cons_outside: list[Connection] = []
-        #     out_cons_inside: list[Connection] = []
-        #     out_cons_outside: list[Connection] = []
-        #     for con in connections:
-        #         if con.destination == station:
-        #             if con.inside:
-        #                 in_cons_inside.append(con)
-        #             else:
-        #                 in_cons_outside.append(con)
-        #         elif con.origin == station:
-        #             if con.inside:
-        #                 out_cons_inside.append(con)
-        #             else:
-        #                 out_cons_outside.append(con)
-        #
-        #     for i in range(1, max_train_len_global + 1):
-        #         print("Building combinations. Number of arces per hyperedge: ", i)
-        #         hyperedges.extend(
-        #             (Hyperedge(*arces) for arces in combinations(in_cons_inside, r=i))
-        #         )
-        #         hyperedges.extend(
-        #             (Hyperedge(*arces) for arces in combinations(in_cons_outside, r=i))
-        #         )
-        #         hyperedges.extend(
-        #             (Hyperedge(*arces) for arces in combinations(out_cons_inside, r=i))
-        #         )
-        #         hyperedges.extend(
-        #             (Hyperedge(*arces) for arces in combinations(out_cons_outside, r=i))
-        #         )
     return set(hyperedges)
 
 
 def get_filtered_hyperedges() -> set[Hyperedge]:
     unfiltered_hyperedges = generate_hyperedges()
-    _write(
-        h
-        for h in unfiltered_hyperedges
-        if not h.inside and h.has_arc_from_to(get_station("C"), get_station("D"))
-        # and h.has_arc_from_to(get_station("C"), get_station("A"))
-    )
     hyperedges: list[Hyperedge] = list(
         filter(
             lambda h: filter_length_train(h)
@@ -130,7 +92,7 @@ def time_generate_hyperedges() -> float:
     for x in hyperedges[:10]:
         print(x)
     print(len(hyperedges))
-    print(f"\nRuntime: {toc-tic}s")
+    print(f"\nRuntime: {toc - tic}s")
     return toc - tic
 
 
@@ -209,6 +171,28 @@ def flow_constraints(m: gp.Model, variable_map: dict[Hyperedge, gp.Var]):
             )
 
 
+def force_edges(m: gp.Model, variable_map: dict[Hyperedge, gp.Var]):
+    sa = get_station("A")
+    sb = get_station("B")
+    sc = get_station("C")
+    m.addConstr(
+        gp.quicksum(
+            var
+            for h, var in variable_map.items()
+            if h.comes_from_station(sa) and h.runs_to_station(sb) and len(h.arces) >= 2
+        )
+        >= 1
+    )
+    m.addConstr(
+        gp.quicksum(
+            var
+            for h, var in variable_map.items()
+            if h.comes_from_station(sb) and h.runs_to_station(sc) and len(h.arces) >= 2
+        )
+        >= 1
+    )
+
+
 def run_hyper_model():
     with gp.Model() as m:
         variable_map: dict[Connection, gp.Var] = configure_model(m)
@@ -223,4 +207,4 @@ def run_hyper_model():
             filter(lambda v: v.X, variable_map.values()), key=lambda v: v.VarName
         ):
             print(var.VarName)
-        print(f"\nRuntime: {toc-tic}s")
+        print(f"\nRuntime: {toc - tic}s")
