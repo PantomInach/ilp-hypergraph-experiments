@@ -1,7 +1,7 @@
-from model import connections, timetable_trips, stations, get_station
+from model import connections, timetable_trips, stations
 from model_objects import Hyperedge, Connection, TrainStation
 from settings import max_train_len_global
-from itertools import combinations, product
+from itertools import product, combinations_with_replacement
 import gurobipy as gp
 import time
 
@@ -23,7 +23,12 @@ def filter_length_train(hyperedge: Hyperedge) -> bool:
     return True
 
 
-def filter_valid_positioning(hyperedge: Hyperedge) -> bool:
+def filter_invalid_positioning(hyperedge: Hyperedge) -> bool:
+    """
+    A hyperedge between to station should have a valid positioning of its trains.
+    """
+    if hyperedge.inside:
+        return True
     for cons in hyperedge.origin_arces.values():
         if not _well_ordere(tuple(con.arrangement_origin[2] for con in cons)):
             return False
@@ -33,15 +38,18 @@ def filter_valid_positioning(hyperedge: Hyperedge) -> bool:
     return True
 
 
-def filter_timetable_trips(hyperedge: Hyperedge) -> bool:
-    """Ensures timetable trips only happen between two stations."""
+def filter_invalid_timetable_trip(hyperedge: Hyperedge) -> bool:
+    """
+    If a hyperedge describes the train movement in a timetable trip, the trains can't change
+    there composition.
+    """
+    if hyperedge.inside:
+        return True
     for trip in timetable_trips:
-        if (
-            trip.origin in hyperedge.origin_arces.keys()
-            and trip.destination in hyperedge.destination_arces.keys()
-        ):
-            if len(hyperedge.origin_arces) > 1 or len(hyperedge.destination_arces) > 1:
-                return False
+        if hyperedge.has_arc_from_to(trip.origin, trip.destination):
+            for arc in hyperedge.arces:
+                if arc.arrangement_origin != arc.arrangement_destination:
+                    return False
     return True
 
 
@@ -65,7 +73,9 @@ def generate_hyperedges() -> set[Hyperedge]:
             hyperedges.extend(
                 (
                     Hyperedge(*arces)
-                    for arces in combinations(arces_between[orig][dest], r=i)
+                    for arces in combinations_with_replacement(
+                        arces_between[orig][dest], r=i
+                    )
                 )
             )
         print("Number of hyperedges: ", len(hyperedges))
@@ -73,15 +83,19 @@ def generate_hyperedges() -> set[Hyperedge]:
 
 
 def get_filtered_hyperedges() -> set[Hyperedge]:
-    unfiltered_hyperedges = generate_hyperedges()
+    print("Generating hyperedges...")
+    hyperedges = generate_hyperedges()
+    print("Filtering hyperedges...", end=" ", flush=True)
     hyperedges: list[Hyperedge] = list(
         filter(
             lambda h: filter_length_train(h)
-            and filter_valid_positioning(h)
-            and filter_timetable_trips(h),
-            unfiltered_hyperedges,
+            and filter_invalid_positioning(h)
+            and filter_invalid_timetable_trip(h),
+            hyperedges,
         )
     )
+    print("done")
+    print("Hyperedges remaining: ", len(hyperedges))
     return hyperedges
 
 
@@ -98,19 +112,24 @@ def time_generate_hyperedges() -> float:
 
 def configure_model(m: gp.Model) -> dict[Hyperedge, gp.Var]:
     hyperedges: set[Hyperedge] = get_filtered_hyperedges()
-    inside_hyperedes: set[Hyperedge] = set(h for h in hyperedges if h.inside)
-    print("Number of inside hyperedges: ", len(inside_hyperedes))
+    print("Configuring model")
 
+    print("Generating variables...", end=" ", flush=True)
     variable_map: dict[Hyperedge, gp.Var] = dict(
         (h, m.addVar(vtype="B", name=str(h))) for h in hyperedges
     )
+    print("done")
 
+    print("Configuring objective function", end="", flush=True)
     m.setObjective(
         gp.quicksum(h.weight * var for h, var in variable_map.items()),
         gp.GRB.MINIMIZE,
     )
+    print(", timetable fullfillment", end="", flush=True)
     fullfill_timetable_trips(m, variable_map)
+    print(", flow constraints", end="", flush=True)
     flow_constraints(m, variable_map)
+    print(", enforcing of single hyperedge in trainstations")
     single_inside_hyperedge(m, variable_map)
 
     return variable_map
@@ -123,7 +142,6 @@ def fullfill_timetable_trips(m: gp.Model, variable_map: dict[Hyperedge, gp.Var])
             for h, var in variable_map.items()
             if not h.inside and h.has_arc_from_to(trip.origin, trip.destination)
         )
-        print("Length of possible_hyperedges: ", len(possible_hyperedges))
         m.addConstr(
             gp.quicksum(possible_hyperedges) == 1,
             name="Trips need to be implemented",
@@ -169,28 +187,6 @@ def flow_constraints(m: gp.Model, variable_map: dict[Hyperedge, gp.Var]):
                 gp.quicksum(variable_map[h] for h in inside_into)
                 == gp.quicksum(variable_map[h] for h in outside_out)
             )
-
-
-def force_edges(m: gp.Model, variable_map: dict[Hyperedge, gp.Var]):
-    sa = get_station("A")
-    sb = get_station("B")
-    sc = get_station("C")
-    m.addConstr(
-        gp.quicksum(
-            var
-            for h, var in variable_map.items()
-            if h.comes_from_station(sa) and h.runs_to_station(sb) and len(h.arces) >= 2
-        )
-        >= 1
-    )
-    m.addConstr(
-        gp.quicksum(
-            var
-            for h, var in variable_map.items()
-            if h.comes_from_station(sb) and h.runs_to_station(sc) and len(h.arces) >= 2
-        )
-        >= 1
-    )
 
 
 def run_hyper_model():
