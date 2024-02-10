@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Neugebauer"
+  given-names: "Aaron"
+title: "Comparision between hypergraph and graphs for the Rolling Stock Rotation Problem"
+version: 1.0.0
+date-released: 2024-02-29
+url: "https://github.com/PantomInach/ilp-hypergraph-experiments"
