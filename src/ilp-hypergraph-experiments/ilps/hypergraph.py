@@ -61,7 +61,7 @@ def _well_ordere(positions: tuple[int]) -> bool:
     return True
 
 
-def generate_hyperedges() -> set[Hyperedge]:
+def generate_hyperedges(verbose=False) -> set[Hyperedge]:
     hyperedges: list[Hyperedge] = []
     arces_between: dict[TrainStation, dict[TrainStation, Connection]] = {
         s: dict((s1, []) for s1 in stations) for s in stations
@@ -78,14 +78,17 @@ def generate_hyperedges() -> set[Hyperedge]:
                     )
                 )
             )
-        print("Number of hyperedges: ", len(hyperedges))
+        if verbose:
+            print("Number of hyperedges: ", len(hyperedges))
     return set(hyperedges)
 
 
-def get_filtered_hyperedges() -> set[Hyperedge]:
-    print("Generating hyperedges...")
-    hyperedges = generate_hyperedges()
-    print("Filtering hyperedges...", end=" ", flush=True)
+def get_filtered_hyperedges(verbose=False) -> set[Hyperedge]:
+    if verbose:
+        print("Generating hyperedges...")
+    hyperedges = generate_hyperedges(verbose=verbose)
+    if verbose:
+        print("Filtering hyperedges...", end=" ", flush=True)
     hyperedges: list[Hyperedge] = list(
         filter(
             lambda h: filter_length_train(h)
@@ -94,8 +97,9 @@ def get_filtered_hyperedges() -> set[Hyperedge]:
             hyperedges,
         )
     )
-    print("done")
-    print("Hyperedges remaining: ", len(hyperedges))
+    if verbose:
+        print("done")
+        print("Hyperedges remaining: ", len(hyperedges))
     return hyperedges
 
 
@@ -110,26 +114,31 @@ def time_generate_hyperedges() -> float:
     return toc - tic
 
 
-def configure_model(m: gp.Model) -> dict[Hyperedge, gp.Var]:
-    hyperedges: set[Hyperedge] = get_filtered_hyperedges()
-    print("Configuring model")
+def configure_model(m: gp.Model, verbose=False) -> dict[Hyperedge, gp.Var]:
+    hyperedges: set[Hyperedge] = get_filtered_hyperedges(verbose=verbose)
+    if verbose:
+        print("Configuring model")
 
-    print("Generating variables...", end=" ", flush=True)
+        print("Generating variables...", end=" ", flush=True)
     variable_map: dict[Hyperedge, gp.Var] = dict(
         (h, m.addVar(vtype="B", name=str(h))) for h in hyperedges
     )
-    print("done")
+    if verbose:
+        print("done")
 
-    print("Configuring objective function", end="", flush=True)
+        print("Configuring objective function", end="", flush=True)
     m.setObjective(
         gp.quicksum(h.weight * var for h, var in variable_map.items()),
         gp.GRB.MINIMIZE,
     )
-    print(", timetable fullfillment", end="", flush=True)
+    if verbose:
+        print(", timetable fullfillment", end="", flush=True)
     fullfill_timetable_trips(m, variable_map)
-    print(", flow constraints", end="", flush=True)
+    if verbose:
+        print(", flow constraints", end="", flush=True)
     flow_constraints(m, variable_map)
-    print(", enforcing of single hyperedge in trainstations")
+    if verbose:
+        print(", enforcing of single hyperedge in trainstations")
     single_inside_hyperedge(m, variable_map)
 
     return variable_map
@@ -189,18 +198,19 @@ def flow_constraints(m: gp.Model, variable_map: dict[Hyperedge, gp.Var]):
             )
 
 
-def run_hyper_model():
+def run_hyper_model(verbose=False):
     with gp.Model() as m:
-        variable_map: dict[Connection, gp.Var] = configure_model(m)
+        variable_map: dict[Connection, gp.Var] = configure_model(m, verbose=verbose)
 
         tic = time.perf_counter()
         m.optimize()
         toc = time.perf_counter()
 
-        print(f"Optimal objective value: {m.objVal}")
-        print("Choosen edges:")
-        for var in sorted(
-            filter(lambda v: v.X, variable_map.values()), key=lambda v: v.VarName
-        ):
-            print(var.VarName)
-        print(f"\nRuntime: {toc - tic}s")
+        if verbose:
+            print(f"Optimal objective value: {m.objVal}")
+            print("Choosen edges:")
+            for var in sorted(
+                filter(lambda v: v.X, variable_map.values()), key=lambda v: v.VarName
+            ):
+                print(var.VarName)
+            print(f"\nRuntime: {toc - tic}s")

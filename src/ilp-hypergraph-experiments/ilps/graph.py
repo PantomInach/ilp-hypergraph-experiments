@@ -113,21 +113,28 @@ def valid_positioning(m: gp.Model, variable_map: dict[Connection, gp.Var]):
                 )
 
 
-def run_model():
-    with gp.Model() as m:
-        variable_map: dict[Connection, gp.Var] = configure_model(m)
+def run_model(verbose=False):
+    with gp.Env(empty=True) as env:
+        if not verbose:
+            env.setParam("OutputFlag", 0)
+            env.setParam("LogToConsole", 0)
+        env.start()
+        with gp.Model(env=env) as m:
+            variable_map: dict[Connection, gp.Var] = configure_model(m)
 
-        tic = time.perf_counter()
-        m.optimize()
-        toc = time.perf_counter()
+            tic = time.perf_counter()
+            m.optimize()
+            toc = time.perf_counter()
 
-        print(f"Optimal objective value: {m.objVal}")
-        print("Choosen edges:")
-        for var in sorted(
-            filter(lambda v: v.X, variable_map.values()), key=lambda v: v.VarName
-        ):
-            print(var.VarName)
-        print(f"\nRuntime: {toc-tic}s")
+            if verbose:
+                print(f"Optimal objective value: {m.objVal}")
+                print("Choosen edges:")
+                for var in sorted(
+                    filter(lambda v: v.X, variable_map.values()),
+                    key=lambda v: v.VarName,
+                ):
+                    print(var.VarName)
+                print(f"\nRuntime: {toc - tic}s")
 
 
 if __name__ == "__main__":

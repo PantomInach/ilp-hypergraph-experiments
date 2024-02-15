@@ -97,6 +97,7 @@ classifiers = [  # Optional
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
 dependencies = [ # Optional
     "gurobipy==11.0.0",
+    "tqdm==4.66.2"
 ]
 
 # List additional groups of dependencies here (e.g. development
@@ -128,8 +129,8 @@ test = ["coverage"]
 
 # The following would provide a command line executable called `sample`
 # which executes the function `main` from this package when invoked.
-# [project.scripts]  # Optional
-# sample = "sample:main"
+[project.scripts]  # Optional
+sample = "sample:main"
 
 # This is configuration specific to the `setuptools` build backend.
 # If you are using a different build backend, you will need to change this.
