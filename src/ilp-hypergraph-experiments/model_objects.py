@@ -1,6 +1,6 @@
 from typing import Final, FrozenSet, Iterable, Self
 
-from settings import train_types, max_train_len_global
+from .settings import train_types, max_train_len_global
 
 # Describes a trains possible arrangements at a station
 # Contains (train_type, train_orientation, train_position)

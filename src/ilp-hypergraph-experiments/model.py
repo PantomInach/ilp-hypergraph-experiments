@@ -1,4 +1,4 @@
-from model_objects import TrainStation, Connection, TimeTableTrip
+from .model_objects import TrainStation, Connection, TimeTableTrip
 
 # Configure here the parameters of the model
 

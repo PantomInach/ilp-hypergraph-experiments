@@ -1,6 +1,6 @@
-from model import connections, stations, timetable_trips
-from model_objects import Connection
-from settings import max_train_len_global
+from ..model import connections, stations, timetable_trips
+from ..model_objects import Connection
+from ..settings import max_train_len_global
 import gurobipy as gp
 import time
 
