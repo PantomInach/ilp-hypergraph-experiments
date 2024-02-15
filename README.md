@@ -3,6 +3,7 @@ This repository provides an example of a comparison between the efficiency of hy
 The simplified model is based on the model in the paper ["Comparison of hypergraph vs graph modelling of a rolling stock scheduling problem"](https://pubsonline.informs.org/doi/10.1287/inte.2020.1069).
 
 ## Running the Models
+Ensure [Gurobi](https://www.gurobi.com/) is installed or your Gurobi license file is set as the environment variable `GRB_LICENSE_FILE`. Otherwise, the model could not be solved with the free tier due to its size.
 First install this module with `pip install .` after cloning the repository. Then to run both models, execute `python3 -m ilp-hypergraph-experiments`. To only run the benchmark, execute `python3 -m ilp-hypergraph-experiments --bench`.
 
 # Information
