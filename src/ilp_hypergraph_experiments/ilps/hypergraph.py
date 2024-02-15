@@ -1,6 +1,6 @@
-from ..model import connections, timetable_trips, stations
-from ..model_objects import Hyperedge, Connection, TrainStation
-from ..settings import max_train_len_global
+from ilp_hypergraph_experiments.model import connections, timetable_trips, stations
+from ilp_hypergraph_experiments.model_objects import Hyperedge, Connection, TrainStation
+from ilp_hypergraph_experiments.settings import max_train_len_global
 from itertools import product, combinations_with_replacement
 import gurobipy as gp
 import time

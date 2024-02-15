@@ -1,6 +1,6 @@
-from .ilps.graph import run_model as graph_model
-from .ilps.hypergraph import run_hyper_model, configure_model
-from .benchmark import benchmark, mean, var
+from ilp_hypergraph_experiments.ilps.graph import run_model as graph_model
+from ilp_hypergraph_experiments.ilps.hypergraph import run_hyper_model, configure_model
+from ilp_hypergraph_experiments.benchmark import benchmark, mean, var
 from tqdm import tqdm
 import gurobipy as gp
 import time

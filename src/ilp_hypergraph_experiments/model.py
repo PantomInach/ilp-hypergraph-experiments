@@ -1,4 +1,8 @@
-from .model_objects import TrainStation, Connection, TimeTableTrip
+from ilp_hypergraph_experiments.model_objects import (
+    TrainStation,
+    Connection,
+    TimeTableTrip,
+)
 
 # Configure here the parameters of the model
 
